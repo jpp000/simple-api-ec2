@@ -2,29 +2,30 @@ name: Deploy para EC2
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout do código
+      - name: Checkout source
         uses: actions/checkout@v3
 
-      - name: Configurar SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+      - name: Login to DockerHub
+        run: docket login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Conectar na EC2 e atualizar o código
-        run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            cd /home/ubuntu/app
-            git pull origin main
-            npm install
-            sudo pm2 restart app || sudo pm2 start index.js --name app
-          EOF
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/node-simple-api-ec2 .
+
+      - name: Push Docker image
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/node-simple-api-ec2:latest
+
+  deploy:
+    runs-on: aws-ec2
+    needs: build
+    steps:
+      - name: Pull Docker image
+        run: docker pull ${{ secrets.DOCKER_USERNAME }}/node-simple-api-ec2:latest
+
+      - name: Run Docker container
+        run: docker run -d -p 3000:3000 -name app-container ${{ secrets.DOCKER_USERNAME }}/node-simple-api-ec2:latest
