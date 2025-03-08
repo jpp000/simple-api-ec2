@@ -28,4 +28,4 @@ jobs:
         run: docker pull ${{ secrets.DOCKER_USERNAME }}/node-simple-api-ec2:latest
 
       - name: Run Docker container
-        run: docker run -d -p 3000:3000 -name app-container ${{ secrets.DOCKER_USERNAME }}/node-simple-api-ec2:latest
+        run: docker run -d -p 3000:3000 --name app-container ${{ secrets.DOCKER_USERNAME }}/node-simple-api-ec2:latest
